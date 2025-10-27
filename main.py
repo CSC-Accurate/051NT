@@ -4,8 +4,8 @@ import sys
 import os
 from datetime import datetime
 import uuid
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # Color codes for terminal output
 RED = '\033[91m'
@@ -14,32 +14,34 @@ YELLOW = '\033[93m'
 BLUE = '\033[94m'
 RESET = '\033[0m'
 
-# MongoDB Atlas connection
-MONGO_URI = "mongodb+srv://accurate_user:dx1vRvZwVnGcrqCt@accurate.cv4ieto.mongodb.net/?appName=accurate"
-DB_NAME = "accurate_user"
-
-# Initialize MongoDB connection
+# Initialize Firebase
 try:
-    client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
-    db = client[DB_NAME]
-    # Test the connection
-    client.admin.command('ping')
-    print(GREEN + "MongoDB Atlas connected successfully!" + RESET)
+    # Yeh line serviceAccountKey.json file ko load karta hai
+    cred = credentials.Certificate("serviceAccountKey.json")
+    # Aapka project ID yahan use ho raha hai
+    firebase_admin.initialize_app(cred, {
+        'projectId': 'accurate-d86a6',
+    })
+    db = firestore.client()
+    print(GREEN + "Firebase connected successfully!" + RESET)
 except Exception as e:
-    print(RED + f"MongoDB connection failed: {str(e)}" + RESET)
+    print(RED + f"Firebase connection failed: {str(e)}" + RESET)
+    print(YELLOW + "Please check:" + RESET)
+    print(YELLOW + "1. serviceAccountKey.json file is in the same folder." + RESET)
+    print(YELLOW + "2. Project ID 'accurate-d86a6' is correct." + RESET)
     sys.exit(1)
 
 def generate_key():
-    """Generate a new unique key"""
+    """Nayi key banata hai"""
     return str(uuid.uuid4())[:8].upper()
 
 def create_new_key():
-    """Create a new key and add it to MongoDB"""
+    """Firebase mein nayi key banake save karta hai"""
     new_key = generate_key()
     
-    # Add key to MongoDB
-    keys_collection = db["keys"]
-    keys_collection.insert_one({
+    # Firebase mein key save karte hain
+    key_ref = db.collection('keys').document(new_key)
+    key_ref.set({
         'key': new_key,
         'used': False,
         'created_at': datetime.now(),
@@ -49,43 +51,41 @@ def create_new_key():
     return new_key
 
 def validate_key(key):
-    """Validate if a key is valid and not used"""
-    # Check if it's the admin key
+    """Check karta hai ki key valid hai ya nahi"""
+    # Admin key check karta hai
     if key == "Ashish-Yadav-001":
         return "admin"
     
-    # Check regular keys in MongoDB
+    # Firebase se regular key check karta hai
     try:
-        keys_collection = db["keys"]
-        key_data = keys_collection.find_one({'key': key})
+        key_ref = db.collection('keys').document(key)
+        key_doc = key_ref.get()
         
-        if key_data and not key_data['used']:
-            # Mark the key as used
-            keys_collection.update_one(
-                {'key': key},
-                {'$set': {'used': True, 'used_at': datetime.now()}}
-            )
-            return "valid"
+        if key_doc.exists:
+            key_data = key_doc.to_dict()
+            if not key_data['used']:
+                # Key ko used mark kar deta hai
+                key_ref.update({
+                    'used': True,
+                    'used_at': datetime.now()
+                })
+                return "valid"
     except Exception as e:
         print(RED + f"Error validating key: {str(e)}" + RESET)
     
     return "invalid"
 
-def format_json(data, indent=2):
-    """Format JSON data in a readable way"""
-    return json.dumps(data, indent=indent, ensure_ascii=False)
-
 def get_phone_info(mobile):
-    """Fetch phone number information"""
+    """Phone number ki info fetch karta hai"""
     url = f"https://random-remove-batch-tea.trycloudflare.com/search?mobile={mobile}"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
         
-        # Store response in MongoDB (optional)
-        phone_responses = db["phone_responses"]
-        phone_responses.insert_one({
+        # Response ko Firebase mein save karta hai (optional)
+        response_ref = db.collection('phone_responses').document()
+        response_ref.set({
             'mobile': mobile,
             'response': data,
             'timestamp': datetime.now()
@@ -96,16 +96,16 @@ def get_phone_info(mobile):
         return {"error": f"API request failed: {str(e)}"}
 
 def get_vehicle_info(reg_no):
-    """Fetch vehicle information"""
+    """Vehicle ki info fetch karta hai"""
     url = f"https://lingering-forest-532d.mrxrobot.workers.dev/vehicle/{reg_no}"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
         
-        # Store response in MongoDB (optional)
-        vehicle_responses = db["vehicle_responses"]
-        vehicle_responses.insert_one({
+        # Response ko Firebase mein save karta hai (optional)
+        response_ref = db.collection('vehicle_responses').document()
+        response_ref.set({
             'reg_no': reg_no,
             'response': data,
             'timestamp': datetime.now()
@@ -116,16 +116,16 @@ def get_vehicle_info(reg_no):
         return {"error": f"API request failed: {str(e)}"}
 
 def get_aadhar_info(aadhar_no):
-    """Fetch Aadhar information"""
+    """Aadhar ki info fetch karta hai"""
     url = f"https://devxadi.vercel.app/fetch?key=devxadi2104&aadhaar={aadhar_no}"
     try:
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
         
-        # Store response in MongoDB (optional)
-        aadhar_responses = db["aadhar_responses"]
-        aadhar_responses.insert_one({
+        # Response ko Firebase mein save karta hai (optional)
+        response_ref = db.collection('aadhar_responses').document()
+        response_ref.set({
             'aadhar_no': aadhar_no,
             'response': data,
             'timestamp': datetime.now()
@@ -136,7 +136,7 @@ def get_aadhar_info(aadhar_no):
         return {"error": f"API request failed: {str(e)}"}
 
 def print_phone_info(data):
-    """Print phone information in a formatted way"""
+    """Phone info ko print karta hai"""
     if "error" in data:
         print(f"Error: {data['error']}")
         return
@@ -161,7 +161,7 @@ def print_phone_info(data):
             print(f"Email: {item['email']}")
 
 def print_vehicle_info(data):
-    """Print vehicle information in a formatted way"""
+    """Vehicle info ko print karta hai"""
     if "error" in data:
         print(f"Error: {data['error']}")
         return
@@ -192,7 +192,7 @@ def print_vehicle_info(data):
     print(f"Present Address: {item.get('presentAddress', 'N/A')}")
 
 def print_aadhar_info(data):
-    """Print Aadhar information in a formatted way"""
+    """Aadhar info ko print karta hai"""
     if "error" in data:
         print(f"Error: {data['error']}")
         return
@@ -215,7 +215,7 @@ def print_aadhar_info(data):
             print(f"UID Available: {'Yes' if member.get('uid') == 'Yes' else 'No'}")
 
 def process_command(command):
-    """Process the command and call the appropriate function"""
+    """User ke command ko process karta hai"""
     parts = command.strip().split()
     if len(parts) < 3 or parts[0] != "/Info":
         print("Invalid command. Use format: /Info [type] [value]")
@@ -241,7 +241,7 @@ def process_command(command):
         print("Invalid information type. Use: number, aadhar, or vehicle")
 
 def admin_panel():
-    """Admin panel for managing keys"""
+    """Admin panel ke liye function"""
     print("\n" + "="*50)
     print("ADMIN PANEL")
     print("="*50)
@@ -263,12 +263,13 @@ def admin_panel():
             print("\nAll Keys:")
             print(f"Admin Key: Ashish-Yadav-001")
             
-            # Get keys from MongoDB
-            keys_collection = db["keys"]
-            keys = list(keys_collection.find().sort('created_at', -1))
+            # Firebase se saare keys fetch karta hai
+            keys_ref = db.collection('keys').order_by('created_at', direction=firestore.Query.DESCENDING)
+            keys = keys_ref.stream()
             
             print("\nUser Keys:")
-            for i, key_data in enumerate(keys, 1):
+            for i, key_doc in enumerate(keys, 1):
+                key_data = key_doc.to_dict()
                 status = "Used" if key_data['used'] else "Unused"
                 created_at = key_data['created_at'].strftime("%Y-%m-%d %H:%M:%S")
                 print(f"{i}. Key: {key_data['key']} - Status: {status} - Created: {created_at}")
@@ -278,22 +279,19 @@ def admin_panel():
         elif choice == "3":
             print("\nAPI Usage Statistics:")
             
-            # Get phone API usage
-            phone_responses = db["phone_responses"]
-            phone_count = phone_responses.count_documents({})
-            print(f"Phone API calls: {phone_count}")
+            # Phone API usage count karta hai
+            phone_responses = db.collection('phone_responses').get()
+            print(f"Phone API calls: {len(phone_responses)}")
             
-            # Get vehicle API usage
-            vehicle_responses = db["vehicle_responses"]
-            vehicle_count = vehicle_responses.count_documents({})
-            print(f"Vehicle API calls: {vehicle_count}")
+            # Vehicle API usage count karta hai
+            vehicle_responses = db.collection('vehicle_responses').get()
+            print(f"Vehicle API calls: {len(vehicle_responses)}")
             
-            # Get Aadhar API usage
-            aadhar_responses = db["aadhar_responses"]
-            aadhar_count = aadhar_responses.count_documents({})
-            print(f"Aadhar API calls: {aadhar_count}")
+            # Aadhar API usage count karta hai
+            aadhar_responses = db.collection('aadhar_responses').get()
+            print(f"Aadhar API calls: {len(aadhar_responses)}")
             
-            total_calls = phone_count + vehicle_count + aadhar_count
+            total_calls = len(phone_responses) + len(vehicle_responses) + len(aadhar_responses)
             print(f"Total API calls: {total_calls}")
         elif choice == "4":
             print("Exiting admin panel.")
@@ -302,19 +300,19 @@ def admin_panel():
             print("Invalid choice. Please try again.")
 
 def main():
-    """Main function to run the CLI tool"""
-    # Print ASCII art in red color
+    """Main function jo tool start karta hai"""
+    # ASCII art print karta hai
     print(RED + "▄▀█ █▀▀ █▀▀ █░█ █▀█ ▄▀█ ▀█▀ █▀▀")
     print("█▀█ █▄▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ ██▄" + RESET)
     
-    # Print tool name in green color
+    # Tool name print karta hai
     print(GREEN + "\nInformation Lookup Tool" + RESET)
     
     print("This tool requires a valid access key.")
     print("Enter /adminlogin to access admin panel")
     print("-" * 50)
     
-    # Check for admin login
+    # Admin login check karta hai
     command = input("\nEnter command or access key: ")
     
     if command.lower() == "/adminlogin":
@@ -326,7 +324,7 @@ def main():
             print("Invalid admin key. Access denied.")
             return
     
-    # Validate regular key
+    # Regular key validate karta hai
     key_status = validate_key(command)
     
     if key_status == "invalid":
@@ -346,6 +344,7 @@ def main():
     print("  /exit to quit")
     print("-" * 50)
     
+    # Command loop chalta hai
     while True:
         try:
             command = input("\nEnter command: ")
