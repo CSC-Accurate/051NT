@@ -237,13 +237,33 @@ def admin_panel():
 
 def main():
     """Main function to run the CLI tool"""
+    def print_accurate_art_in_red():
+    """
+
+    """
+    
+    red_color_code = '\u001B[31m'
+    reset_color_code = '\u001B[0m'
+
+    
+    accurate_art = [
+        "▄▀█ █▀▀ █▀▀ █░█ █▀█ ▄▀█ ▀█▀ █▀▀",
+        "█▀█ █▄▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ ██▄"
+    ]
+
+    
+    for line in accurate_art:
+        print(f"{red_color_code}{line}{reset_color_code}")
+
+
+print_accurate_art_in_red()
     print("Information Lookup Tool")
     print("This tool requires a valid access key.")
-    print("Enter /adminlogin to access admin panel")
+    
     print("-" * 50)
     
     # Check for admin login
-    command = input("\nEnter command or access key: ")
+    command = input("\nEnter access key: ")
     
     if command.lower() == "/adminlogin":
         admin_key = input("Enter admin key: ")
