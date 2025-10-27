@@ -245,16 +245,13 @@ def main():
     # Print ASCII art in red color
     print(RED + "▄▀█ █▀▀ █▀▀ █░█ █▀█ ▄▀█ ▀█▀ █▀▀")
     print("█▀█ █▄▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ ██▄" + RESET)
-    
     # Print tool name in green color
-    print(GREEN + "\nInformation Lookup Tool" + RESET)
+                                  print(GREEN + "\nInformation Lookup Tool" + RESET)
     
-    print("This tool requires a valid access key.")
-    print("Enter /adminlogin to access admin panel")
     print("-" * 50)
     
     # Check for admin login
-    command = input("\nEnter command or access key: ")
+    command = input("\nEnter access key: ")
     
     if command.lower() == "/adminlogin":
         admin_key = input("Enter admin key: ")
