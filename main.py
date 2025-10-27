@@ -237,23 +237,10 @@ def admin_panel():
 
 def main():
     """Main function to run the CLI tool"""
-    def print_accurate_art_in_red():
-    """
-
-    """
     
-    red_color_code = '\u001B[31m'
-    reset_color_code = '\u001B[0m'
-
+        print("▄▀█ █▀▀ █▀▀ █░█ █▀█ ▄▀█ ▀█▀ █▀▀")
+        print("█▀█ █▄▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ ██▄")
     
-    accurate_art = [
-        "▄▀█ █▀▀ █▀▀ █░█ █▀█ ▄▀█ ▀█▀ █▀▀",
-        "█▀█ █▄▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ ██▄"
-    ]
-
-    
-    for line in accurate_art:
-        print(f"{red_color_code}{line}{reset_color_code}")
 
 
 
