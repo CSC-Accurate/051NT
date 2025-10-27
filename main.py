@@ -8,6 +8,11 @@ import uuid
 # File to store keys
 KEYS_FILE = "keys.json"
 
+# Color codes for terminal output
+RED = '\033[91m'
+GREEN = '\033[92m'
+RESET = '\033[0m'
+
 def initialize_keys_file():
     """Initialize the keys file if it doesn't exist"""
     if not os.path.exists(KEYS_FILE):
@@ -237,20 +242,19 @@ def admin_panel():
 
 def main():
     """Main function to run the CLI tool"""
+    # Print ASCII art in red color
+    print(RED + "▄▀█ █▀▀ █▀▀ █░█ █▀█ ▄▀█ ▀█▀ █▀▀")
+    print("█▀█ █▄▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ ██▄" + RESET)
     
-        print("▄▀█ █▀▀ █▀▀ █░█ █▀█ ▄▀█ ▀█▀ █▀▀")
-        print("█▀█ █▄▄ █▄▄ █▄█ █▀▄ █▀█ ░█░ ██▄")
+    # Print tool name in green color
+    print(GREEN + "\nInformation Lookup Tool" + RESET)
     
-
-
-
-    print("Information Lookup Tool")
     print("This tool requires a valid access key.")
-    
+    print("Enter /adminlogin to access admin panel")
     print("-" * 50)
     
     # Check for admin login
-    command = input("\nEnter access key: ")
+    command = input("\nEnter command or access key: ")
     
     if command.lower() == "/adminlogin":
         admin_key = input("Enter admin key: ")
