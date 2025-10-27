@@ -256,7 +256,7 @@ def main():
         print(f"{red_color_code}{line}{reset_color_code}")
 
 
-print_accurate_art_in_red()
+
     print("Information Lookup Tool")
     print("This tool requires a valid access key.")
     
