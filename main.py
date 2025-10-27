@@ -248,7 +248,7 @@ def main():
     # Print tool name in green color
                                   print(GREEN + "\nInformation Lookup Tool" + RESET)
     
-    print("-" * 50)
+    
     
     # Check for admin login
     command = input("\nEnter access key: ")
