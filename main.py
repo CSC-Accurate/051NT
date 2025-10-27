@@ -4,67 +4,70 @@ import sys
 import os
 from datetime import datetime
 import uuid
-
-# File to store keys
-KEYS_FILE = "keys.json"
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
 
 # Color codes for terminal output
 RED = '\033[91m'
 GREEN = '\033[92m'
+YELLOW = '\033[93m'
+BLUE = '\033[94m'
 RESET = '\033[0m'
 
-def initialize_keys_file():
-    """Initialize the keys file if it doesn't exist"""
-    if not os.path.exists(KEYS_FILE):
-        with open(KEYS_FILE, 'w') as f:
-            json.dump({
-                "admin_key": "Ashish-Yadav-001",
-                "keys": []
-            }, f, indent=2)
+# MongoDB Atlas connection
+MONGO_URI = "mongodb+srv://accurate_user:dx1vRvZwVnGcrqCt@accurate.cv4ieto.mongodb.net/?appName=accurate"
+DB_NAME = "accurate_user"
 
-def load_keys():
-    """Load keys from the file"""
-    initialize_keys_file()
-    with open(KEYS_FILE, 'r') as f:
-        return json.load(f)
-
-def save_keys(keys_data):
-    """Save keys to the file"""
-    with open(KEYS_FILE, 'w') as f:
-        json.dump(keys_data, f, indent=2)
+# Initialize MongoDB connection
+try:
+    client = MongoClient(MONGO_URI, server_api=ServerApi('1'))
+    db = client[DB_NAME]
+    # Test the connection
+    client.admin.command('ping')
+    print(GREEN + "MongoDB Atlas connected successfully!" + RESET)
+except Exception as e:
+    print(RED + f"MongoDB connection failed: {str(e)}" + RESET)
+    sys.exit(1)
 
 def generate_key():
     """Generate a new unique key"""
     return str(uuid.uuid4())[:8].upper()
 
 def create_new_key():
-    """Create a new key and add it to the keys file"""
-    keys_data = load_keys()
+    """Create a new key and add it to MongoDB"""
     new_key = generate_key()
-    keys_data["keys"].append({
-        "key": new_key,
-        "used": False,
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Add key to MongoDB
+    keys_collection = db["keys"]
+    keys_collection.insert_one({
+        'key': new_key,
+        'used': False,
+        'created_at': datetime.now(),
+        'created_by': 'admin'
     })
-    save_keys(keys_data)
+    
     return new_key
 
 def validate_key(key):
     """Validate if a key is valid and not used"""
-    keys_data = load_keys()
-    
     # Check if it's the admin key
-    if key == keys_data["admin_key"]:
+    if key == "Ashish-Yadav-001":
         return "admin"
     
-    # Check regular keys
-    for key_data in keys_data["keys"]:
-        if key_data["key"] == key and not key_data["used"]:
+    # Check regular keys in MongoDB
+    try:
+        keys_collection = db["keys"]
+        key_data = keys_collection.find_one({'key': key})
+        
+        if key_data and not key_data['used']:
             # Mark the key as used
-            key_data["used"] = True
-            key_data["used_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            save_keys(keys_data)
+            keys_collection.update_one(
+                {'key': key},
+                {'$set': {'used': True, 'used_at': datetime.now()}}
+            )
             return "valid"
+    except Exception as e:
+        print(RED + f"Error validating key: {str(e)}" + RESET)
     
     return "invalid"
 
@@ -78,7 +81,17 @@ def get_phone_info(mobile):
     try:
         response = requests.get(url)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Store response in MongoDB (optional)
+        phone_responses = db["phone_responses"]
+        phone_responses.insert_one({
+            'mobile': mobile,
+            'response': data,
+            'timestamp': datetime.now()
+        })
+        
+        return data
     except requests.exceptions.RequestException as e:
         return {"error": f"API request failed: {str(e)}"}
 
@@ -88,7 +101,17 @@ def get_vehicle_info(reg_no):
     try:
         response = requests.get(url)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Store response in MongoDB (optional)
+        vehicle_responses = db["vehicle_responses"]
+        vehicle_responses.insert_one({
+            'reg_no': reg_no,
+            'response': data,
+            'timestamp': datetime.now()
+        })
+        
+        return data
     except requests.exceptions.RequestException as e:
         return {"error": f"API request failed: {str(e)}"}
 
@@ -98,7 +121,17 @@ def get_aadhar_info(aadhar_no):
     try:
         response = requests.get(url)
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Store response in MongoDB (optional)
+        aadhar_responses = db["aadhar_responses"]
+        aadhar_responses.insert_one({
+            'aadhar_no': aadhar_no,
+            'response': data,
+            'timestamp': datetime.now()
+        })
+        
+        return data
     except requests.exceptions.RequestException as e:
         return {"error": f"API request failed: {str(e)}"}
 
@@ -217,24 +250,52 @@ def admin_panel():
         print("\nAdmin Options:")
         print("1. Create new key")
         print("2. View all keys")
-        print("3. Exit admin panel")
+        print("3. View API usage statistics")
+        print("4. Exit admin panel")
         
         choice = input("\nEnter your choice: ")
         
         if choice == "1":
             new_key = create_new_key()
             print(f"\nNew key created: {new_key}")
+            print(BLUE + "You can share this key with anyone to allow access to the tool." + RESET)
         elif choice == "2":
-            keys_data = load_keys()
             print("\nAll Keys:")
-            print(f"Admin Key: {keys_data['admin_key']}")
+            print(f"Admin Key: Ashish-Yadav-001")
+            
+            # Get keys from MongoDB
+            keys_collection = db["keys"]
+            keys = list(keys_collection.find().sort('created_at', -1))
+            
             print("\nUser Keys:")
-            for i, key_data in enumerate(keys_data["keys"], 1):
-                status = "Used" if key_data["used"] else "Unused"
-                print(f"{i}. Key: {key_data['key']} - Status: {status} - Created: {key_data['created_at']}")
-                if key_data["used"]:
-                    print(f"   Used at: {key_data.get('used_at', 'N/A')}")
+            for i, key_data in enumerate(keys, 1):
+                status = "Used" if key_data['used'] else "Unused"
+                created_at = key_data['created_at'].strftime("%Y-%m-%d %H:%M:%S")
+                print(f"{i}. Key: {key_data['key']} - Status: {status} - Created: {created_at}")
+                if key_data['used']:
+                    used_at = key_data['used_at'].strftime("%Y-%m-%d %H:%M:%S")
+                    print(f"   Used at: {used_at}")
         elif choice == "3":
+            print("\nAPI Usage Statistics:")
+            
+            # Get phone API usage
+            phone_responses = db["phone_responses"]
+            phone_count = phone_responses.count_documents({})
+            print(f"Phone API calls: {phone_count}")
+            
+            # Get vehicle API usage
+            vehicle_responses = db["vehicle_responses"]
+            vehicle_count = vehicle_responses.count_documents({})
+            print(f"Vehicle API calls: {vehicle_count}")
+            
+            # Get Aadhar API usage
+            aadhar_responses = db["aadhar_responses"]
+            aadhar_count = aadhar_responses.count_documents({})
+            print(f"Aadhar API calls: {aadhar_count}")
+            
+            total_calls = phone_count + vehicle_count + aadhar_count
+            print(f"Total API calls: {total_calls}")
+        elif choice == "4":
             print("Exiting admin panel.")
             break
         else:
@@ -249,11 +310,12 @@ def main():
     # Print tool name in green color
     print(GREEN + "\nInformation Lookup Tool" + RESET)
     
-    
+    print("This tool requires a valid access key.")
+    print("Enter /adminlogin to access admin panel")
     print("-" * 50)
     
     # Check for admin login
-    command = input("\nEnter access key: ")
+    command = input("\nEnter command or access key: ")
     
     if command.lower() == "/adminlogin":
         admin_key = input("Enter admin key: ")
